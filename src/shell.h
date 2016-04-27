@@ -69,8 +69,11 @@ public:
 
 protected:
     virtual void focus() {}
-    virtual void motion(uint32_t time, wl_fixed_t x, wl_fixed_t y);
+    virtual void motion(uint32_t time, weston_pointer_motion_event *event);
     virtual void button(uint32_t time, uint32_t button, uint32_t state) {}
+    virtual void axis(uint32_t time, weston_pointer_axis_event *event) {}
+    virtual void axis_source(uint32_t source) {}
+    virtual void frame() {}
     virtual void cancel() {}
     void setCursor(Cursor cursor);
     void unsetCursor();
@@ -162,9 +165,12 @@ protected:
     virtual void panelConfigure(struct weston_surface *es, int32_t sx, int32_t sy, PanelPosition pos);
 
     virtual void defaultPointerGrabFocus(weston_pointer_grab *grab);
-    virtual void defaultPointerGrabMotion(weston_pointer_grab *grab, uint32_t time, wl_fixed_t x, wl_fixed_t y);
+    virtual void defaultPointerGrabMotion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *event);
     virtual void defaultPointerGrabButton(weston_pointer_grab *grab, uint32_t time, uint32_t button, uint32_t state);
-    virtual void movePointer(weston_pointer *pointer, uint32_t time, wl_fixed_t x, wl_fixed_t y);
+    virtual void defaultPointerGrabAxis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *event);
+    virtual void defaultPointerGrabAxisSource(weston_pointer_grab *grab, uint32_t source);
+    virtual void defaultPointerGrabFrame(weston_pointer_grab *grab);
+    virtual void movePointer(weston_pointer *pointer, uint32_t time, weston_pointer_motion_event *event);
 
     struct Child {
         Shell *shell;

@@ -39,9 +39,9 @@ struct DGrab : public ShellGrab {
             weston_pointer_set_focus(pointer(), view, sx, sy);
         }
     }
-    void motion(uint32_t time, wl_fixed_t x, wl_fixed_t y) override
+    void motion(uint32_t time, weston_pointer_motion_event *event) override
     {
-        weston_pointer_move(pointer(), x, y);
+        weston_pointer_move(pointer(), event);
 
         if (surface) {
             int pos_x = wl_fixed_to_int(pointer()->x + dx);
@@ -70,7 +70,7 @@ struct DGrab : public ShellGrab {
         }
 
         if (!moving) {
-            wl_list *resource_list = &pointer()->focus_resource_list;
+            wl_list *resource_list = &pointer()->focus_client->pointer_resources;
             wl_resource *resource;
             wl_resource_for_each(resource, resource_list) {
                 wl_fixed_t sx, sy;

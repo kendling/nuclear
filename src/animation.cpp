@@ -17,6 +17,7 @@
 
 #include "animation.h"
 #include "animationcurve.h"
+#include "utils.h"
 
 Animation::Animation()
          : updateSignal(new Signal<float>())

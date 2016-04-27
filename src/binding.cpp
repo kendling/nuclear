@@ -61,25 +61,25 @@ void Binding::releaseToggle()
     }
 }
 
-void Binding::keyHandler(weston_seat *seat, uint32_t time, uint32_t key, void *data)
+void Binding::keyHandler(weston_keyboard *keyboard_state, uint32_t time, uint32_t key, void *data)
 {
     Binding *b = static_cast<Binding *>(data);
     if (b->checkToggled()) {
-        b->keyTriggered(seat, time, key);
+        b->keyTriggered(keyboard_state->seat, time, key);
     }
 }
 
-void Binding::buttonHandler(weston_seat *seat, uint32_t time, uint32_t button, void *data)
+void Binding::buttonHandler(weston_pointer *pointer_state, uint32_t time, uint32_t button, void *data)
 {
     Binding *b = static_cast<Binding *>(data);
     if (b->checkToggled()) {
-        b->buttonTriggered(seat, time, button);
+        b->buttonTriggered(pointer_state->seat, time, button);
     }
 }
 
-static void axisHandler(weston_seat *seat, uint32_t time, uint32_t axis, wl_fixed_t value, void *data)
+static void axisHandler(weston_pointer *pointer_state, uint32_t time, weston_pointer_axis_event *event, void *data)
 {
-    static_cast<Binding *>(data)->axisTriggered(seat, time, axis, value);
+    static_cast<Binding *>(data)->axisTriggered(pointer_state->seat, time, event->axis, event->value);
 }
 
 void Binding::bindKey(uint32_t key, weston_keyboard_modifier modifier)

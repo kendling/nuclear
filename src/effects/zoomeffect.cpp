@@ -38,8 +38,8 @@ void ZoomEffect::run(struct weston_seat *seat, uint32_t time, uint32_t axis, wl_
     struct weston_output *output;
 
     wl_list_for_each(output, &compositor->output_list, link) {
-        if (pixman_region32_contains_point(&output->region, wl_fixed_to_double(seat->pointer->x),
-                                           wl_fixed_to_double(seat->pointer->y), nullptr)) {
+        if (pixman_region32_contains_point(&output->region, wl_fixed_to_double(seat->pointer_state->x),
+                                           wl_fixed_to_double(seat->pointer_state->y), nullptr)) {
             /* For every pixel zoom 20th of a step */
             float increment = output->zoom.increment * -wl_fixed_to_double(value) / 20.f;
 
@@ -50,7 +50,7 @@ void ZoomEffect::run(struct weston_seat *seat, uint32_t time, uint32_t axis, wl_
             else if (output->zoom.level > output->zoom.max_level)
                 output->zoom.level = output->zoom.max_level;
             else if (!output->zoom.active) {
-                weston_output_activate_zoom(output);
+                weston_output_activate_zoom(output, seat);
             }
 
             output->zoom.spring_z.target = output->zoom.level;

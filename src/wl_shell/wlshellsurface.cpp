@@ -106,8 +106,8 @@ void WlShellSurface::pong(wl_client *client, wl_resource *resource, uint32_t ser
 void WlShellSurface::move(wl_client *client, wl_resource *resource, wl_resource *seat_resource, uint32_t serial)
 {
     weston_seat *ws = static_cast<weston_seat *>(wl_resource_get_user_data(seat_resource));
-    weston_surface *surface = weston_surface_get_main_surface(ws->pointer->focus->surface);
-    if (ws->pointer->button_count == 0 || ws->pointer->grab_serial != serial || surface != shsurf()->weston_surface()) {
+    weston_surface *surface = weston_surface_get_main_surface(ws->pointer_state->focus->surface);
+    if (ws->pointer_state->button_count == 0 || ws->pointer_state->grab_serial != serial || surface != shsurf()->weston_surface()) {
         return;
     }
 
@@ -117,8 +117,8 @@ void WlShellSurface::move(wl_client *client, wl_resource *resource, wl_resource 
 void WlShellSurface::resize(wl_client *client, wl_resource *resource, wl_resource *seat_resource, uint32_t serial, uint32_t edges)
 {
     weston_seat *ws = static_cast<weston_seat *>(wl_resource_get_user_data(seat_resource));
-    weston_surface *surface = weston_surface_get_main_surface(ws->pointer->focus->surface);
-    if (ws->pointer->button_count == 0 || ws->pointer->grab_serial != serial || surface != shsurf()->weston_surface()) {
+    weston_surface *surface = weston_surface_get_main_surface(ws->pointer_state->focus->surface);
+    if (ws->pointer_state->button_count == 0 || ws->pointer_state->grab_serial != serial || surface != shsurf()->weston_surface()) {
         return;
     }
 

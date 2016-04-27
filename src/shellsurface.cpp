@@ -544,18 +544,15 @@ void ShellSurface::centerOnOutput(struct weston_output *output)
 class MoveGrab : public ShellGrab
 {
 public:
-    void motion(uint32_t time, wl_fixed_t x, wl_fixed_t y) override
+    void motion(uint32_t time, weston_pointer_motion_event *event) override
     {
-        weston_pointer_move(pointer(), x, y);
-
-        int dx = wl_fixed_to_int(pointer()->x + this->dx);
-        int dy = wl_fixed_to_int(pointer()->y + this->dy);
+        weston_pointer_move(pointer(), event);
 
         if (!shsurf)
             return;
 
         weston_view *view = shsurf->view();
-        weston_view_set_position(view, dx, dy);
+        weston_view_set_position(view, event->dx, event->dy);
         weston_compositor_schedule_repaint(shsurf->m_surface->compositor);
     }
     void button(uint32_t time, uint32_t button, uint32_t state_w) override
@@ -588,8 +585,8 @@ void ShellSurface::dragMove(struct weston_seat *ws)
     if (!move)
         return;
 
-    move->dx = wl_fixed_from_double(m_view->geometry.x) - ws->pointer->grab_x;
-    move->dy = wl_fixed_from_double(m_view->geometry.y) - ws->pointer->grab_y;
+    move->dx = wl_fixed_from_double(m_view->geometry.x) - ws->pointer_state->grab_x;
+    move->dy = wl_fixed_from_double(m_view->geometry.y) - ws->pointer_state->grab_y;
     move->shsurf = this;
     m_runningGrab = move;
 
@@ -607,9 +604,9 @@ public:
         shsurf->m_resizeEdges = ShellSurface::Edges::None;
     }
 
-    void motion(uint32_t time, wl_fixed_t x, wl_fixed_t y) override
+    void motion(uint32_t time, weston_pointer_motion_event *event) override
     {
-        weston_pointer_move(pointer(), x, y);
+        weston_pointer_move(pointer(), event);
 
         if (!shsurf)
             return;

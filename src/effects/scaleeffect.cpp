@@ -216,8 +216,8 @@ void ScaleEffect::run(struct weston_seat *ws)
         m_grab->surface = nullptr;
         m_grab->start(ws, Cursor::Arrow);
         Shell::instance()->hidePanels();
-        if (ws->pointer->focus) {
-            ShellSurface *s = Shell::getShellSurface(ws->pointer->focus->surface);
+        if (ws->pointer_state->focus) {
+            ShellSurface *s = Shell::getShellSurface(ws->pointer_state->focus->surface);
             if (!s) {
                 return;
             }

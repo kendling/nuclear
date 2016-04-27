@@ -49,7 +49,7 @@ void ShellGrab::start(weston_seat *seat)
 {
     ShellSeat::shellSeat(seat)->endPopupGrab();
 
-    m_pointer = seat->pointer;
+    m_pointer = seat->pointer_state;
     weston_pointer_start_grab(m_pointer, &m_grab.base);
 }
 
@@ -67,9 +67,9 @@ void ShellGrab::end()
     }
 }
 
-void ShellGrab::motion(uint32_t time, wl_fixed_t x, wl_fixed_t y)
+void ShellGrab::motion(uint32_t time, weston_pointer_motion_event *event)
 {
-    Shell::instance()->movePointer(m_pointer, time, x, y);
+    Shell::instance()->movePointer(m_pointer, time, event);
 }
 
 ShellGrab *ShellGrab::fromGrab(weston_pointer_grab *grab)
@@ -99,10 +99,13 @@ void ShellGrab::unsetCursor()
 }
 
 const weston_pointer_grab_interface ShellGrab::s_shellGrabInterface = {
-    [](weston_pointer_grab *base)                                                 { ShellGrab::fromGrab(base)->focus(); },
-    [](weston_pointer_grab *base, uint32_t time, wl_fixed_t x, wl_fixed_t y)      { ShellGrab::fromGrab(base)->motion(time, x, y); },
-    [](weston_pointer_grab *base, uint32_t time, uint32_t button, uint32_t state) { ShellGrab::fromGrab(base)->button(time, button, state); },
-    [](weston_pointer_grab *base)                                                 { ShellGrab::fromGrab(base)->cancel(); }
+    [](weston_pointer_grab *base)                                                    { ShellGrab::fromGrab(base)->focus(); },
+    [](weston_pointer_grab *base, uint32_t time, weston_pointer_motion_event *event) { ShellGrab::fromGrab(base)->motion(time, event); },
+    [](weston_pointer_grab *base, uint32_t time, uint32_t button, uint32_t state)    { ShellGrab::fromGrab(base)->button(time, button, state); },
+    [](weston_pointer_grab *base, uint32_t time, weston_pointer_axis_event *event)   { ShellGrab::fromGrab(base)->axis(time, event); },
+    [](weston_pointer_grab *base, uint32_t source)                                   { ShellGrab::fromGrab(base)->axis_source(source); },
+    [](weston_pointer_grab *base)                                                    { ShellGrab::fromGrab(base)->frame(); },
+    [](weston_pointer_grab *base)                                                    { ShellGrab::fromGrab(base)->cancel(); }
 };
 
 
@@ -131,13 +134,13 @@ void Shell::defaultPointerGrabFocus(weston_pointer_grab *grab)
     }
 }
 
-void Shell::defaultPointerGrabMotion(weston_pointer_grab *grab, uint32_t time, wl_fixed_t x, wl_fixed_t y)
+void Shell::defaultPointerGrabMotion(weston_pointer_grab *grab, uint32_t time, weston_pointer_motion_event *event)
 {
     weston_pointer *pointer = grab->pointer;
 
-    movePointer(pointer, time, x, y);
+    movePointer(pointer, time, event);
 
-    wl_list *resource_list = &pointer->focus_resource_list;
+    wl_list *resource_list = &pointer->focus_client->pointer_resources;
     wl_resource *resource;
     wl_resource_for_each(resource, resource_list) {
         wl_fixed_t sx, sy;
@@ -151,7 +154,7 @@ void Shell::defaultPointerGrabButton(weston_pointer_grab *grab, uint32_t time, u
     weston_pointer *pointer = grab->pointer;
     weston_compositor *compositor = pointer->seat->compositor;
 
-    wl_list *resource_list = &pointer->focus_resource_list;
+    wl_list *resource_list = &pointer->focus_client->pointer_resources;
     if (!wl_list_empty(resource_list)) {
         wl_display *display = compositor->wl_display;
         wl_resource *resource;
@@ -168,16 +171,49 @@ void Shell::defaultPointerGrabButton(weston_pointer_grab *grab, uint32_t time, u
     }
 }
 
-void Shell::movePointer(weston_pointer *pointer, uint32_t time, wl_fixed_t fx, wl_fixed_t fy)
+void Shell::defaultPointerGrabAxis(weston_pointer_grab *grab, uint32_t time, weston_pointer_axis_event *event)
 {
-    weston_pointer_move(pointer, fx, fy);
+    weston_pointer *pointer = grab->pointer;
+
+    wl_list *resource_list = &pointer->focus_client->pointer_resources;
+    wl_resource *resource;
+    wl_resource_for_each(resource, resource_list) {
+        wl_pointer_send_axis(resource, time, event->axis, event->value);
+    }
+}
+
+void Shell::defaultPointerGrabAxisSource(weston_pointer_grab *grab, uint32_t source)
+{
+    weston_pointer *pointer = grab->pointer;
+
+    wl_list *resource_list = &pointer->focus_client->pointer_resources;
+    wl_resource *resource;
+    wl_resource_for_each(resource, resource_list) {
+        wl_pointer_send_axis_source(resource, source);
+    }
+}
+
+void Shell::defaultPointerGrabFrame(weston_pointer_grab *grab)
+{
+    weston_pointer *pointer = grab->pointer;
+
+    wl_list *resource_list = &pointer->focus_client->pointer_resources;
+    wl_resource *resource;
+    wl_resource_for_each(resource, resource_list) {
+        wl_pointer_send_frame(resource);
+    }
+}
+
+void Shell::movePointer(weston_pointer *pointer, uint32_t time, weston_pointer_motion_event *event)
+{
+    weston_pointer_move(pointer, event);
 
     if (time - m_lastMotionTime < 1000) {
         return;
     }
 
-    int x = wl_fixed_to_int(fx);
-    int y = wl_fixed_to_int(fy);
+    int x = wl_fixed_to_int(event->x);
+    int y = wl_fixed_to_int(event->y);
     weston_output *tmp = nullptr, *out = nullptr;
     wl_list_for_each(tmp, &m_compositor->output_list, link) {
         if (pixman_region32_contains_point(&tmp->region, x, y, NULL)) {
@@ -220,9 +256,12 @@ void Shell::movePointer(weston_pointer *pointer, uint32_t time, wl_fixed_t fx, w
 static void default_grab_pointer_cancel(weston_pointer_grab *grab) {}
 
 const weston_pointer_grab_interface Shell::s_defaultPointerGrabInterface = {
-    [](weston_pointer_grab *g)                                                   { Shell::instance()->defaultPointerGrabFocus(g); },
-    [](weston_pointer_grab *g, uint32_t time, wl_fixed_t x, wl_fixed_t y)        { Shell::instance()->defaultPointerGrabMotion(g, time, x, y); },
-    [](weston_pointer_grab *g, uint32_t time, uint32_t button, uint32_t state_w) { Shell::instance()->defaultPointerGrabButton(g, time, button, state_w); },
+    [](weston_pointer_grab *g)                                                    { Shell::instance()->defaultPointerGrabFocus(g); },
+    [](weston_pointer_grab *g, uint32_t time, weston_pointer_motion_event *event) { Shell::instance()->defaultPointerGrabMotion(g, time, event); },
+    [](weston_pointer_grab *g, uint32_t time, uint32_t button, uint32_t state_w)  { Shell::instance()->defaultPointerGrabButton(g, time, button, state_w); },
+    [](weston_pointer_grab *g, uint32_t time, weston_pointer_axis_event *event)   { Shell::instance()->defaultPointerGrabAxis(g, time, event); },
+    [](weston_pointer_grab *g, uint32_t source)                                   { Shell::instance()->defaultPointerGrabAxisSource(g, source); },
+    [](weston_pointer_grab *g)                                                    { Shell::instance()->defaultPointerGrabFrame(g); },
     default_grab_pointer_cancel,
 };
 
@@ -292,8 +331,8 @@ void Shell::init()
     wl_event_loop_add_idle(loop, [](void *data) { static_cast<Shell *>(data)->launchShellProcess(); }, this);
 
     weston_compositor_add_button_binding(compositor(), BTN_LEFT, (weston_keyboard_modifier)0,
-                                         [](struct weston_seat *seat, uint32_t time, uint32_t button, void *data) {
-                                             static_cast<Shell *>(data)->activateSurface(seat, time, button); }, this);
+                                         [](struct weston_pointer *pointer_state, uint32_t time, uint32_t button, void *data) {
+                                             static_cast<Shell *>(data)->activateSurface(pointer_state->seat, time, button); }, this);
 }
 
 void Shell::setSplash(weston_view *view)
@@ -686,11 +725,11 @@ void Shell::registerEffect(Effect *effect)
 
 void Shell::activateSurface(struct weston_seat *seat, uint32_t time, uint32_t button)
 {
-    weston_view *focus = seat->pointer->focus;
+    weston_view *focus = seat->pointer_state->focus;
     if (!focus)
         return;
 
-    if (seat->pointer->grab == &seat->pointer->default_grab) {
+    if (seat->pointer_state->grab == &seat->pointer_state->default_grab) {
         ShellSurface *shsurf = getShellSurface(focus->surface);
         if (shsurf && shsurf->type() == ShellSurface::Type::TopLevel && shsurf->m_state.fullscreen) {
             return;

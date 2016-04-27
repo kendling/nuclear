@@ -73,18 +73,18 @@ ShellSeat::ShellSeat(struct weston_seat *seat)
     m_listeners.seatDestroy.notify = seatDestroyed;
     wl_signal_add(&seat->destroy_signal, &m_listeners.seatDestroy);
 
-    if (seat->pointer) {
+    if (seat->pointer_state) {
         m_listeners.pointerFocus.notify = pointerFocus;
-        wl_signal_add(&seat->pointer->focus_signal, &m_listeners.pointerFocus);
+        wl_signal_add(&seat->pointer_state->focus_signal, &m_listeners.pointerFocus);
         m_listeners.pointerMotion.notify = pointerMotion;
-        wl_signal_add(&seat->pointer->motion_signal, &m_listeners.pointerMotion);
+        wl_signal_add(&seat->pointer_state->motion_signal, &m_listeners.pointerMotion);
     } else {
         wl_list_init(&m_listeners.pointerFocus.link);
         wl_list_init(&m_listeners.pointerMotion.link);
     }
-    if (seat->keyboard) {
+    if (seat->keyboard_state) {
         m_listeners.keyboardFocus.notify = keyboardFocus;
-        wl_signal_add(&seat->keyboard->focus_signal, &m_listeners.keyboardFocus);
+        wl_signal_add(&seat->keyboard_state->focus_signal, &m_listeners.keyboardFocus);
     } else {
         wl_list_init(&m_listeners.keyboardFocus.link);
     }
@@ -183,15 +183,39 @@ void ShellSeat::popup_grab_focus(struct weston_pointer_grab *grab)
     }
 }
 
-static void popup_grab_motion(weston_pointer_grab *grab,  uint32_t time, wl_fixed_t x, wl_fixed_t y)
+static void popup_grab_motion(weston_pointer_grab *grab,  uint32_t time, weston_pointer_motion_event *event)
 {
-    weston_pointer_move(grab->pointer, x, y);
+    weston_pointer_move(grab->pointer, event);
 
     struct wl_resource *resource;
-    wl_resource_for_each(resource, &grab->pointer->focus_resource_list) {
+    wl_resource_for_each(resource, &grab->pointer->focus_client->pointer_resources) {
         wl_fixed_t sx, sy;
         weston_view_from_global_fixed(grab->pointer->focus, grab->pointer->x, grab->pointer->y, &sx, &sy);
         wl_pointer_send_motion(resource, time, sx, sy);
+    }
+}
+
+static void popup_grab_axis(weston_pointer_grab *grab,  uint32_t time, weston_pointer_axis_event *event)
+{
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &grab->pointer->focus_client->pointer_resources) {
+        wl_pointer_send_axis(resource, time, event->axis, event->value);
+    }
+}
+
+static void popup_grab_axis_source(weston_pointer_grab *grab,  uint32_t source)
+{
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &grab->pointer->focus_client->pointer_resources) {
+        wl_pointer_send_axis_source(resource, source);
+    }
+}
+
+static void popup_grab_frame(weston_pointer_grab *grab)
+{
+    struct wl_resource *resource;
+    wl_resource_for_each(resource, &grab->pointer->focus_client->pointer_resources) {
+        wl_pointer_send_frame(resource);
     }
 }
 
@@ -200,7 +224,7 @@ void ShellSeat::popup_grab_button(struct weston_pointer_grab *grab, uint32_t tim
     ShellSeat *shseat = static_cast<PopupGrab *>(container_of(grab, PopupGrab, grab))->seat;
     struct wl_display *display = shseat->m_seat->compositor->wl_display;
 
-    struct wl_list *resource_list = &grab->pointer->focus_resource_list;
+    struct wl_list *resource_list = &grab->pointer->focus_client->pointer_resources;
     if (!wl_list_empty(resource_list)) {
         struct wl_resource *resource;
         uint32_t serial = wl_display_get_serial(display);
@@ -208,7 +232,7 @@ void ShellSeat::popup_grab_button(struct weston_pointer_grab *grab, uint32_t tim
             wl_pointer_send_button(resource, serial, time, button, state_w);
         }
     } else if (state_w == WL_POINTER_BUTTON_STATE_RELEASED &&
-              (shseat->m_popupGrab.initial_up || time - shseat->m_seat->pointer->grab_time > 500)) {
+              (shseat->m_popupGrab.initial_up || time - shseat->m_seat->pointer_state->grab_time > 500)) {
         shseat->endPopupGrab();
     }
 
@@ -220,23 +244,26 @@ const struct weston_pointer_grab_interface ShellSeat::popup_grab_interface = {
     ShellSeat::popup_grab_focus,
     popup_grab_motion,
     ShellSeat::popup_grab_button,
+    popup_grab_axis,
+    popup_grab_axis_source,
+    popup_grab_frame,
     [](weston_pointer_grab *grab) {}
 };
 
 bool ShellSeat::addPopupGrab(ShellSurface *surface, uint32_t serial)
 {
-    if (serial == m_seat->pointer->grab_serial) {
+    if (serial == m_seat->pointer_state->grab_serial) {
         if (m_popupGrab.surfaces.empty()) {
             m_popupGrab.client = surface->client();
             m_popupGrab.grab.interface = &popup_grab_interface;
             /* We must make sure here that this popup was opened after
             * a mouse press, and not just by moving around with other
             * popups already open. */
-            if (m_seat->pointer->button_count > 0) {
+            if (m_seat->pointer_state->button_count > 0) {
                 m_popupGrab.initial_up = 0;
             }
 
-            weston_pointer_start_grab(m_seat->pointer, &m_popupGrab.grab);
+            weston_pointer_start_grab(m_seat->pointer_state, &m_popupGrab.grab);
         }
         m_popupGrab.surfaces.push_back(surface);
 

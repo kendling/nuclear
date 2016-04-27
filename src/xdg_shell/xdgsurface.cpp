@@ -147,8 +147,8 @@ void XdgSurface::setAppId(wl_client *client, wl_resource *resource, const char *
 void XdgSurface::move(wl_client *client, wl_resource *resource, wl_resource *seat, uint32_t serial)
 {
     weston_seat *ws = static_cast<weston_seat *>(wl_resource_get_user_data(seat));
-    weston_surface *surface = weston_surface_get_main_surface(ws->pointer->focus->surface);
-    if (ws->pointer->button_count == 0 || ws->pointer->grab_serial != serial || surface != shsurf()->weston_surface()) {
+    weston_surface *surface = weston_surface_get_main_surface(ws->pointer_state->focus->surface);
+    if (ws->pointer_state->button_count == 0 || ws->pointer_state->grab_serial != serial || surface != shsurf()->weston_surface()) {
         return;
     }
 
@@ -158,8 +158,8 @@ void XdgSurface::move(wl_client *client, wl_resource *resource, wl_resource *sea
 void XdgSurface::resize(wl_client *client, wl_resource *resource, wl_resource *seat, uint32_t serial, uint32_t edges)
 {
     weston_seat *ws = static_cast<weston_seat *>(wl_resource_get_user_data(seat));
-    weston_surface *surface = weston_surface_get_main_surface(ws->pointer->focus->surface);
-    if (ws->pointer->button_count == 0 || ws->pointer->grab_serial != serial || surface != shsurf()->weston_surface()) {
+    weston_surface *surface = weston_surface_get_main_surface(ws->pointer_state->focus->surface);
+    if (ws->pointer_state->button_count == 0 || ws->pointer_state->grab_serial != serial || surface != shsurf()->weston_surface()) {
         return;
     }
 

@@ -56,8 +56,8 @@ public:
     Signal<weston_seat *, uint32_t, HotSpot> hotSpotTriggered;
 
 private:
-    static void keyHandler(weston_seat *seat, uint32_t time, uint32_t key, void *data);
-    static void buttonHandler(weston_seat *seat, uint32_t time, uint32_t key, void *data);
+    static void keyHandler(weston_keyboard *keyboard_state, uint32_t time, uint32_t key, void *data);
+    static void buttonHandler(weston_pointer *pointer_state, uint32_t time, uint32_t key, void *data);
     static Binding *s_toggledBinding;
 
     void hotSpotHandler(weston_seat *seat, uint32_t time, HotSpot hs);

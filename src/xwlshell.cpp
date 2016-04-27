@@ -28,12 +28,11 @@ XWlShell::XWlShell()
         return (shell_surface *)static_cast<XWlShell *>(shell)->getShellSurface(surface, client);
     };
 #define _this reinterpret_cast<ShellSurface *>(shsurf)
-    compositor->shell_interface.get_primary_view = [](void *shell, shell_surface *shsurf) { return _this->view(); };
     compositor->shell_interface.set_toplevel = [](shell_surface *shsurf) { _this->setTopLevel(); };
     compositor->shell_interface.set_transient = [](shell_surface *shsurf, weston_surface *parent, int x, int y, uint32_t flags) { _this->setTransient(parent, x, y, flags & WL_SHELL_SURFACE_TRANSIENT_INACTIVE); };
     compositor->shell_interface.set_fullscreen = [](shell_surface *shsurf, uint32_t method, uint32_t framerate, weston_output *output) { _this->setFullscreen((ShellSurface::FullscreenMethod)method, framerate, output);};
-    compositor->shell_interface.resize = [](shell_surface *shsurf, weston_seat *ws, uint32_t edges) { _this->dragResize(ws, (ShellSurface::Edges)edges); return 0; };
-    compositor->shell_interface.move = [](shell_surface *shsurf, weston_seat *ws) { _this->dragMove(ws); return 0; };
+    compositor->shell_interface.resize = [](shell_surface *shsurf, weston_pointer *pointer_state, uint32_t edges) { _this->dragResize(pointer_state->seat, (ShellSurface::Edges)edges); return 0; };
+    compositor->shell_interface.move = [](shell_surface *shsurf, weston_pointer *pointer_state) { _this->dragMove(pointer_state->seat); return 0; };
     compositor->shell_interface.set_xwayland = [](shell_surface *shsurf, int x, int y, uint32_t flags) { _this->setXWayland(x, y, flags & WL_SHELL_SURFACE_TRANSIENT_INACTIVE); };
     compositor->shell_interface.set_title = [](shell_surface *shsurf, const char *t) { _this->setTitle(t); };
     compositor->shell_interface.set_window_geometry = [](shell_surface *shsurf, int32_t x, int32_t y, int32_t w, int32_t h) { _this->setGeometry(x, y, w, h); };

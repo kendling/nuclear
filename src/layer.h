@@ -20,6 +20,8 @@
 
 #include <weston/compositor.h>
 
+#include "utils.h"
+
 class ShellSurface;
 
 struct weston_view;
